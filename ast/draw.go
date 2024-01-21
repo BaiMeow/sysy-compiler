@@ -18,7 +18,7 @@ func draw(n any) DrawUnit {
 	t := reflect.TypeOf(n).Elem()
 
 	if v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
-		return draw(v.Elem().Interface())
+		return draw(v.Interface())
 	}
 
 	u.Label = t.Name()
@@ -43,19 +43,23 @@ func draw(n any) DrawUnit {
 			continue
 		}
 
-		switch field.Interface().(type) {
+		switch field := field.Interface().(type) {
 		case types.Type:
-			u.Children = append(u.Children, DrawUnit{
-				Label: fmt.Sprintf("%s: %s", t.Field(i).Name, field.Interface().(types.Type).String()),
-			})
-			continue
-		case string:
 			u.Children = append(u.Children, DrawUnit{
 				Label: fmt.Sprintf("%s: %s", t.Field(i).Name, field.String()),
 			})
 			continue
-		case Expression:
-			return draw(field.Interface().(Expression))
+		case string:
+			u.Children = append(u.Children, DrawUnit{
+				Label: fmt.Sprintf("%s: %s", t.Field(i).Name, field),
+			})
+			continue
+		case int:
+			u.Children = append(u.Children, DrawUnit{
+				Label: fmt.Sprintf("%s: %d", t.Field(i).Name, field),
+			})
+			continue
+
 		}
 
 		if field.Kind() == reflect.Slice {
@@ -80,6 +84,10 @@ func draw(n any) DrawUnit {
 			u.Children = append(u.Children, draw(field.Addr().Interface()))
 			continue
 		}
+
+		unit := draw(field.Addr().Interface())
+		unit.Label = fmt.Sprintf("%s: %s", t.Field(i).Name, unit.Label)
+		u.Children = append(u.Children, unit)
 	}
 	return u
 }

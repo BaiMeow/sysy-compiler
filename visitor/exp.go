@@ -19,7 +19,7 @@ func (c *Context) Exp(pc parser.IExpContext) (ast.Expression, error) {
 
 func (c *Context) ConstExp(pc parser.IConstExpContext) (*ast.ConstExpression, error) {
 	add := pc.AddExp()
-	if add != nil {
+	if add == nil {
 		return nil, Invalid(pc.GetStart(), "Missing AddExp")
 	}
 

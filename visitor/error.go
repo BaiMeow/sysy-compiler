@@ -8,9 +8,9 @@ import (
 
 func Invalid(pctx antlr.Token, msg string) error {
 	return fmt.Errorf(
-		"%s parsing %s in line %d pos %d",
+		"%s (%s in line %d pos %d)",
 		msg,
 		strconv.Quote(pctx.GetText()),
 		pctx.GetLine(),
-		pctx.GetStart())
+		pctx.GetColumn())
 }

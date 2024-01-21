@@ -1,7 +1,12 @@
 const float abc = 1;
-
+const int aaa=abc;
 int main(){
     float abc=1.1;
     if (1==1) return 1;
 }
+
+int abcd(int a,int b){
+    return a+b;
+}
+
 

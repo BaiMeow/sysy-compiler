@@ -26,7 +26,11 @@ func (c *Context) ConstDecl(pctx parser.IConstDeclContext) (*ast.Declare, error)
 	}
 
 	for _, def := range pctx.AllConstDef() {
-		c.ConstDef(def, Type)
+		def, err := c.ConstDef(def, Type)
+		if err != nil {
+			return nil, err
+		}
+		decl.Definitions = append(decl.Definitions, def)
 	}
 
 	return decl, nil

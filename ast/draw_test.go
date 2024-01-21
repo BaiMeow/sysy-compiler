@@ -12,7 +12,7 @@ func TestDraw(t *testing.T) {
 	prog := Program{
 		Children: []any{
 			&Declare{
-				Definitions: []Define{
+				Definitions: []*Define{
 					{
 						Type:         &types.Base{Type: types.Int},
 						Identifier:   "a",

@@ -3,7 +3,7 @@ package ast
 import "sysy/ast/types"
 
 type Declare struct {
-	Definitions []Define
+	Definitions []*Define
 }
 
 type Define struct {

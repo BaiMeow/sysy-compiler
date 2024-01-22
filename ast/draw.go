@@ -59,7 +59,11 @@ func draw(n any) DrawUnit {
 				Label: fmt.Sprintf("%s: %d", t.Field(i).Name, field),
 			})
 			continue
-
+		case float32:
+			u.Children = append(u.Children, DrawUnit{
+				Label: fmt.Sprintf("%s: %f", t.Field(i).Name, field),
+			})
+			continue
 		}
 
 		if field.Kind() == reflect.Slice {

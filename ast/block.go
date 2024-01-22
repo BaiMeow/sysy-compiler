@@ -5,18 +5,18 @@ type Block struct {
 }
 
 type If struct {
-	Condition any
+	Condition Expr
 	Then      any
 }
 
 type IfElse struct {
-	Condition any
+	Condition Expr
 	Then      any
 	Else      any
 }
 
 type While struct {
-	Condition any
+	Condition Expr
 	Body      any
 }
 
@@ -25,9 +25,10 @@ type Break struct{}
 type Continue struct{}
 
 type Return struct {
-	Value any
+	Value Expr
 }
 
 type Assign struct {
-	LVal any
+	LVal Expr
+	Exp  Expr
 }

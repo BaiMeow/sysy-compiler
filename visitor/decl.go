@@ -42,5 +42,12 @@ func (c *Context) VarDecl(pctx parser.IVarDeclContext) (*ast.Declare, error) {
 	if Type == nil {
 		return nil, Invalid(pctx.Type().GetSymbol(), "Invalid Type")
 	}
+	for _, def := range pctx.AllVarDef() {
+		def, err := c.VarDef(def, Type)
+		if err != nil {
+			return nil, err
+		}
+		decl.Definitions = append(decl.Definitions, def)
+	}
 	return decl, nil
 }

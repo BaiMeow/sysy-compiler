@@ -9,9 +9,9 @@ import (
 	"sysy/parser"
 )
 
-func (c *Context) Exp(pc parser.IExpContext) (ast.Expression, error) {
+func (c *Context) Exp(pc parser.IExpContext) (ast.Expr, error) {
 	add := pc.AddExp()
-	if add != nil {
+	if add == nil {
 		return nil, Invalid(pc.GetStart(), "Missing AddExp")
 	}
 	return c.AddExp(add)
@@ -34,12 +34,12 @@ func (c *Context) ConstExp(pc parser.IConstExpContext) (*ast.ConstExpression, er
 	}
 
 	return &ast.ConstExpression{
-		Expression: rec,
-		Value:      Value,
+		Expr:  rec,
+		Value: Value,
 	}, nil
 }
 
-func (c *Context) AddExp(pc parser.IAddExpContext) (ast.Expression, error) {
+func (c *Context) AddExp(pc parser.IAddExpContext) (ast.Expr, error) {
 	mul := pc.MulExp()
 	if mul == nil {
 		return nil, Invalid(pc.GetStart(), "Missing MulExp")
@@ -80,7 +80,7 @@ func (c *Context) AddExp(pc parser.IAddExpContext) (ast.Expression, error) {
 	}
 }
 
-func (c *Context) MulExp(pc parser.IMulExpContext) (ast.Expression, error) {
+func (c *Context) MulExp(pc parser.IMulExpContext) (ast.Expr, error) {
 	unary := pc.UnaryExp()
 	if unary == nil {
 		return nil, Invalid(pc.GetStart(), "Missing UnaryExp")
@@ -126,26 +126,21 @@ func (c *Context) MulExp(pc parser.IMulExpContext) (ast.Expression, error) {
 	}
 }
 
-func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expression, error) {
+func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expr, error) {
 	primary := pctx.PrimaryExp()
 	if primary != nil {
 		return c.Primary(primary)
 	}
 
-	funcRParams := pctx.FuncRParams()
-
-	// func cal
-	if funcRParams != nil {
-		var expList []ast.Expression
-		for _, v := range funcRParams.AllExp() {
-			exp, err := c.Exp(v)
-			if err != nil {
-				return nil, err
-			}
-			expList = append(expList, exp)
+	// func call
+	if funcRParams := pctx.FuncRParams(); funcRParams != nil {
+		expList, err := c.FuncRParams(funcRParams)
+		if err != nil {
+			return nil, err
 		}
 
-		symbolType := c.GetSymbol(pctx.Identifier().GetText())
+		ident := pctx.Identifier().GetText()
+		symbolType := c.GetSymbol(ident)
 		if symbolType == nil {
 			return nil, Invalid(pctx.Identifier().GetSymbol(), "Undeclared Identifier")
 		}
@@ -160,21 +155,53 @@ func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expression, error)
 		}
 
 		for i, v := range fType.ParamsList {
-			if v.Assign(expList[i].GetType()) {
+			if !v.Assign(expList[i].GetType()) {
 				return nil, Invalid(pctx.Identifier().GetSymbol(), fmt.Sprintf("%s cannot be assigned to %s", expList[i].GetType().String(), v.String()))
 			}
 		}
+
+		return &ast.FuncCall{
+			Identifier: ident,
+			ParamsR:    expList,
+			Type:       fType.Return,
+		}, nil
 	}
 
-	unary := pctx.UnaryExp()
-	if unary != nil {
+	if unaryNode := pctx.UnaryExp(); unaryNode != nil {
+		unary, err := c.UnaryExp(unaryNode)
+		if err != nil {
+			return nil, err
+		}
 
+		op := pctx.UnaryOp()
+		switch {
+		case op.Add() != nil:
+			return ast.NewPlus(unary)
+		case op.Sub() != nil:
+			return ast.NewNeg(unary)
+		case op.Not() != nil:
+			return ast.NewNot(unary)
+		default:
+			return nil, Invalid(pctx.UnaryExp().GetStop(), "Missing operator")
+		}
 	}
 
 	return nil, Invalid(pctx.GetStart(), "Invalid UnaryExp")
 }
 
-func (c *Context) Primary(pctx parser.IPrimaryExpContext) (ast.Expression, error) {
+func (c *Context) FuncRParams(pctx parser.IFuncRParamsContext) ([]ast.Expr, error) {
+	var exprs []ast.Expr
+	for _, v := range pctx.AllExp() {
+		exp, err := c.Exp(v)
+		if err != nil {
+			return nil, err
+		}
+		exprs = append(exprs, exp)
+	}
+	return exprs, nil
+}
+
+func (c *Context) Primary(pctx parser.IPrimaryExpContext) (ast.Expr, error) {
 	if exp := pctx.Exp(); exp != nil {
 		return c.Exp(exp)
 	}
@@ -190,14 +217,14 @@ func (c *Context) Primary(pctx parser.IPrimaryExpContext) (ast.Expression, error
 	return nil, Invalid(pctx.GetStart(), "Invalid PrimaryExp")
 }
 
-func (c *Context) Lval(pctx parser.ILValContext) (ast.Expression, error) {
+func (c *Context) Lval(pctx parser.ILValContext) (ast.Expr, error) {
 	id := pctx.Identifier().GetText()
 	symbolType := c.GetSymbol(id)
 	if symbolType == nil {
 		return nil, Invalid(pctx.Identifier().GetSymbol(), "Undeclared Identifier")
 	}
 
-	var node ast.Expression = &ast.Symbol{
+	var node ast.Expr = &ast.Symbol{
 		Type:       symbolType,
 		Identifier: id,
 	}
@@ -222,7 +249,7 @@ func (c *Context) Lval(pctx parser.ILValContext) (ast.Expression, error) {
 	return node, nil
 }
 
-func (c *Context) Number(pctx parser.INumberContext) (ast.Expression, error) {
+func (c *Context) Number(pctx parser.INumberContext) (ast.Expr, error) {
 	strval := pctx.GetText()
 	if strings.Contains(strval, ".") {
 		f64, err := strconv.ParseFloat(strval, 32)

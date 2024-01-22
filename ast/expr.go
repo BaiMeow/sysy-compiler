@@ -2,44 +2,44 @@ package ast
 
 import (
 	"fmt"
-	"log"
 	"sysy/ast/types"
 )
 
-type Expression interface {
+type Expr interface {
 	GetType() types.Type
 }
 
 type ConstExpression struct {
-	Expression
+	Expr
 	Value any
 }
 
-type Add struct {
+type DoubleElement struct {
 	Type  types.Type
-	Left  Expression
-	Right Expression
+	Left  Expr
+	Right Expr
 }
 
-type Sub struct {
-	Type        types.Type
-	Left, Right Expression
+type SingleElement struct {
+	Type types.Type
+	Exp  Expr
 }
 
-type Mul struct {
-	Type        types.Type
-	Left, Right Expression
-}
+type Plus SingleElement
 
-type Div struct {
-	Type        types.Type
-	Left, Right Expression
-}
+type Neg SingleElement
 
-type Mod struct {
-	Type        types.Type
-	Left, Right Expression
-}
+type Not SingleElement
+
+type Add DoubleElement
+
+type Sub DoubleElement
+
+type Mul DoubleElement
+
+type Div DoubleElement
+
+type Mod DoubleElement
 
 type Symbol struct {
 	Type       types.Type
@@ -56,26 +56,90 @@ type FloatConst struct {
 
 type Member struct {
 	Type  types.Type
-	LVal  Expression
-	Index Expression
+	LVal  Expr
+	Index Expr
 }
 
 type FuncCall struct {
+	Type       types.Type
 	Identifier string
-	ParamsR    []Expression
-	types.Type
+	ParamsR    []Expr
 }
 
 type ArrayExp struct {
 	Type   types.Type
-	Member []Expression
+	Member []Expr
+}
+
+type LOrExp DoubleElement
+
+type LAndExp DoubleElement
+
+type EqExp DoubleElement
+
+type NeqExp DoubleElement
+
+type LessExp DoubleElement
+
+type GreaterExp DoubleElement
+
+type LessEqExp DoubleElement
+
+type GreaterEqExp DoubleElement
+
+func (t *Plus) GetType() types.Type {
+	return t.Type
+}
+
+func NewPlus(exp Expr) (*Plus, error) {
+	check, ok := exp.GetType().(*types.Base)
+	if !ok || check.Type != types.Int && check.Type != types.Float {
+		return nil, fmt.Errorf("plus can only be int or float")
+	}
+
+	return &Plus{
+		Type: check,
+		Exp:  exp,
+	}, nil
+}
+
+func (n *Neg) GetType() types.Type {
+	return n.Type
+}
+
+func NewNeg(exp Expr) (*Neg, error) {
+	check, ok := exp.GetType().(*types.Base)
+	if !ok || check.Type != types.Int && check.Type != types.Float {
+		return nil, fmt.Errorf("neg can only be int or float")
+	}
+
+	return &Neg{
+		Type: check,
+		Exp:  exp,
+	}, nil
+}
+
+func (n *Not) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func NewNot(exp Expr) (*Not, error) {
+	check, ok := exp.GetType().(*types.Base)
+	if !ok || check.Type != types.Int {
+		return nil, fmt.Errorf("not can only be int")
+	}
+
+	return &Not{
+		Type: check,
+		Exp:  exp,
+	}, nil
 }
 
 func (t *Add) GetType() types.Type {
 	return t.Type
 }
 
-func NewAdd(left, right Expression) (*Add, error) {
+func NewAdd(left, right Expr) (*Add, error) {
 	newType, err := commonCalNewType(left, right)
 	if err != nil {
 		return nil, err
@@ -92,7 +156,7 @@ func (t *Sub) GetType() types.Type {
 	return t.Type
 }
 
-func NewSub(left, right Expression) (*Sub, error) {
+func NewSub(left, right Expr) (*Sub, error) {
 	newType, err := commonCalNewType(left, right)
 	if err != nil {
 		return nil, err
@@ -109,7 +173,7 @@ func (t *Mul) GetType() types.Type {
 	return t.Type
 }
 
-func NewMul(left, right Expression) (*Mul, error) {
+func NewMul(left, right Expr) (*Mul, error) {
 	newType, err := commonCalNewType(left, right)
 	if err != nil {
 		return nil, err
@@ -126,7 +190,7 @@ func (t *Div) GetType() types.Type {
 	return t.Type
 }
 
-func NewDiv(left, right Expression) (*Div, error) {
+func NewDiv(left, right Expr) (*Div, error) {
 	newType, err := commonCalNewType(left, right)
 	if err != nil {
 		return nil, err
@@ -144,7 +208,7 @@ func (t *Mod) GetType() types.Type {
 	return t.Type
 }
 
-func NewMod(left, right Expression) (*Mod, error) {
+func NewMod(left, right Expr) (*Mod, error) {
 	if left.GetType().Equal(right.GetType()) && left.GetType().Equal(&types.Base{Type: types.Int}) {
 		return &Mod{
 			Left:  left,
@@ -176,7 +240,7 @@ func (t *Member) GetType() types.Type {
 	return t.Type
 }
 
-func NewMember(lval Expression, index Expression) (*Member, error) {
+func NewMember(lval Expr, index Expr) (*Member, error) {
 	checkArray, ok := lval.GetType().(*types.Array)
 	if !ok {
 		return nil, fmt.Errorf("member can only modify array")
@@ -201,7 +265,39 @@ func (t *ArrayExp) GetType() types.Type {
 	return t.Type
 }
 
-func commonCalNewType(left, right Expression) (types.Type, error) {
+func (t *LOrExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *LAndExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *EqExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *NeqExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *LessExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *GreaterExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *LessEqExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func (t *GreaterEqExp) GetType() types.Type {
+	return &types.Base{Type: types.Int}
+}
+
+func commonCalNewType(left, right Expr) (types.Type, error) {
 	lcheck, ok := left.GetType().(*types.Base)
 	if !ok {
 		return nil, fmt.Errorf("left type can only be int or float")
@@ -219,7 +315,7 @@ func commonCalNewType(left, right Expression) (types.Type, error) {
 	}
 }
 
-func CalConst(exp Expression) any {
+func CalConst(exp Expr) any {
 	switch exp := exp.(type) {
 	case *IntegerConst:
 		return exp.Value
@@ -238,8 +334,7 @@ func CalConst(exp Expression) any {
 	case *Mod:
 		return CalculateWithType(CalConst(exp.Left), CalConst(exp.Right), actionNil, actionMod)
 	default:
-		log.Println(fmt.Sprintf("Unknown Expression Type: %T", exp))
-		return false
+		return nil
 	}
 }
 

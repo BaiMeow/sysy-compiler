@@ -11,12 +11,17 @@ import (
 	"sysy/visitor"
 )
 
+var (
+	code   string
+	output string
+)
+
 func main() {
-	var codepath string
-	flag.StringVar(&codepath, "f", "./test/demo1.sysy", "code file path")
+	flag.StringVar(&code, "f", "./test/demo1.sysy", "code file path")
+	flag.StringVar(&output, "o", "./output.html", "output file path")
 	flag.Parse()
 
-	input, err := antlr.NewFileStream(codepath)
+	input, err := antlr.NewFileStream(code)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -49,11 +54,11 @@ const tmpl = `<!DOCTYPE html>
 <html>
 <head>
     <!-- Import style -->
-    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
     <!-- Import Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- Import component library -->
-    <script src="//unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/element-plus"></script>
 </head>
 <body>
     <div id="app">

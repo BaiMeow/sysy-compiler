@@ -5,7 +5,7 @@ import (
 	"sysy/ast/types"
 )
 
-func BaseTypeDefault(p types.Type) (Expression, error) {
+func BaseTypeDefault(p types.Type) (Expr, error) {
 	switch p := p.(type) {
 	case *types.Base:
 		switch p.Type {

@@ -9,5 +9,5 @@ type Declare struct {
 type Define struct {
 	Type         types.Type
 	Identifier   string
-	InitialValue Expression
+	InitialValue Expr
 }

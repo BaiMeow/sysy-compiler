@@ -40,16 +40,23 @@ func (c *Context) FuncDef(pctx parser.IFuncDefContext) (*ast.FuncDef, error) {
 		return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
 	}
 
-	//fblock, err := c.Block(pctx.Block())
-	//if err != nil {
-	//	return nil, err
-	//}
+	c.PushSymbolTable()
+	for _, param := range funcParams {
+		if !c.DeclSymbol(param.Identifier, param.Type) {
+			return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
+		}
+	}
+
+	fblock, err := c.Block(pctx.Block())
+	if err != nil {
+		return nil, err
+	}
 
 	return &ast.FuncDef{
 		Identifier: id,
 		Params:     funcParams,
 		Return:     recType,
-		Body:       nil,
+		Body:       fblock,
 	}, nil
 }
 
@@ -109,14 +116,29 @@ func (c *Context) VarDef(pctx parser.IVarDefContext, BaseType types.Type) (*ast.
 		return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
 	}
 
-	initExpNode := &ast.ArrayExp{
-		Type:   BaseType,
-		Member: make([]ast.Expression, allLen),
-	}
-
 	initExps, err := c.InitVal(pctx.InitVal())
 	if err != nil {
 		return nil, err
+	}
+
+	if allLen < len(initExps) {
+		return nil, Invalid(pctx.InitVal().GetStart(), "too many init val")
+	}
+
+	if len(initExps) == 1 {
+		if !initExps[0].GetType().Equal(Type) {
+			return nil, Invalid(pctx.InitVal().GetStart(), "Invalid InitVal Type")
+		}
+		return &ast.Define{
+			Identifier:   id,
+			Type:         Type,
+			InitialValue: initExps[0],
+		}, nil
+	}
+
+	initExpNode := &ast.ArrayExp{
+		Type:   BaseType,
+		Member: make([]ast.Expr, allLen),
 	}
 
 	for i := 0; i < allLen; i++ {

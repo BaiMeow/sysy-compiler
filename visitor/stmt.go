@@ -6,42 +6,42 @@ import (
 )
 
 func (c *Context) Stmt(pctx parser.IStmtContext) (any, error) {
-	if lval := pctx.LVal(); lval != nil {
+	if lValNode := pctx.LVal(); lValNode != nil {
 		exp := pctx.Exp()
 		if exp == nil {
 			return nil, Invalid(pctx.GetStart(), "assignment missing exp")
 		}
 
-		lvalNode, err := c.Lval(lval)
+		lValExpr, err := c.LVal(lValNode)
 		if err != nil {
 			return nil, err
 		}
 
-		expNode, err := c.Exp(exp)
+		expr, err := c.Exp(exp)
 		if err != nil {
 			return nil, err
 		}
 
 		return &ast.Assign{
-			LVal: lvalNode,
-			Exp:  expNode,
+			LVal: lValExpr,
+			Exp:  expr,
 		}, nil
 	}
 
 	if hasReturn := pctx.Return(); hasReturn != nil {
-		returnNode := &ast.Return{}
-		exp := pctx.Exp()
-		if exp == nil {
-			return returnNode, nil
+		returnStmt := &ast.Return{}
+		expNode := pctx.Exp()
+		if expNode == nil {
+			return returnStmt, nil
 		}
 
-		expNode, err := c.Exp(exp)
+		expr, err := c.Exp(expNode)
 		if err != nil {
 			return nil, err
 		}
-		returnNode.Value = expNode
+		returnStmt.Value = expr
 
-		return returnNode, nil
+		return returnStmt, nil
 	}
 
 	if hasBreak := pctx.Break(); hasBreak != nil {
@@ -66,20 +66,20 @@ func (c *Context) Stmt(pctx parser.IStmtContext) (any, error) {
 			return nil, err
 		}
 
-		stmtNode := pctx.AllStmt()
-		stmt, err := c.Stmt(stmtNode[0])
+		stmtNodes := pctx.AllStmt()
+		stmt, err := c.Stmt(stmtNodes[0])
 		if err != nil {
 			return nil, err
 		}
 
-		if len(stmtNode) == 1 {
+		if len(stmtNodes) == 1 {
 			return &ast.If{
 				Condition: cond,
 				Then:      stmt,
 			}, nil
 		}
 
-		stmt2, err := c.Stmt(stmtNode[1])
+		stmt2, err := c.Stmt(stmtNodes[1])
 		if err != nil {
 			return nil, err
 		}
@@ -107,5 +107,5 @@ func (c *Context) Stmt(pctx parser.IStmtContext) (any, error) {
 		}, nil
 	}
 
-	return nil, Invalid(pctx.GetStart(), "Invalid Stmt")
+	return nil, Invalid(pctx.GetStart(), "invalid stmt")
 }

@@ -7,12 +7,12 @@ import (
 )
 
 func (c *Context) Decl(pctx parser.IDeclContext) (*ast.Declare, error) {
-	if decl := pctx.ConstDecl(); decl != nil {
-		return c.ConstDecl(decl)
+	if declNode := pctx.ConstDecl(); declNode != nil {
+		return c.ConstDecl(declNode)
 	}
 
-	if decl := pctx.VarDecl(); decl != nil {
-		return c.VarDecl(decl)
+	if varDeclNode := pctx.VarDecl(); varDeclNode != nil {
+		return c.VarDecl(varDeclNode)
 	}
 
 	return nil, Invalid(pctx.GetStart(), "Invalid Decl")
@@ -22,15 +22,15 @@ func (c *Context) ConstDecl(pctx parser.IConstDeclContext) (*ast.Declare, error)
 	decl := &ast.Declare{}
 	Type := types.ParseBase(pctx.Type(), true)
 	if Type == nil {
-		return nil, Invalid(pctx.Type().GetSymbol(), "Invalid Type")
+		return nil, Invalid(pctx.Type().GetSymbol(), "invalid type")
 	}
 
-	for _, def := range pctx.AllConstDef() {
-		def, err := c.ConstDef(def, Type)
+	for _, constDefNode := range pctx.AllConstDef() {
+		constDef, err := c.ConstDef(constDefNode, Type)
 		if err != nil {
 			return nil, err
 		}
-		decl.Definitions = append(decl.Definitions, def)
+		decl.Definitions = append(decl.Definitions, constDef)
 	}
 
 	return decl, nil
@@ -40,14 +40,14 @@ func (c *Context) VarDecl(pctx parser.IVarDeclContext) (*ast.Declare, error) {
 	decl := &ast.Declare{}
 	Type := types.ParseBase(pctx.Type(), false)
 	if Type == nil {
-		return nil, Invalid(pctx.Type().GetSymbol(), "Invalid Type")
+		return nil, Invalid(pctx.Type().GetSymbol(), "invalid type")
 	}
-	for _, def := range pctx.AllVarDef() {
-		def, err := c.VarDef(def, Type)
+	for _, varDefNode := range pctx.AllVarDef() {
+		varDef, err := c.VarDef(varDefNode, Type)
 		if err != nil {
 			return nil, err
 		}
-		decl.Definitions = append(decl.Definitions, def)
+		decl.Definitions = append(decl.Definitions, varDef)
 	}
 	return decl, nil
 }

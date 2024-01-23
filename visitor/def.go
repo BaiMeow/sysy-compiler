@@ -10,7 +10,7 @@ import (
 func (c *Context) FuncDef(pctx parser.IFuncDefContext) (*ast.FuncDef, error) {
 	funcTypeNode := pctx.FuncType()
 	if funcTypeNode == nil {
-		return nil, Invalid(pctx.GetStart(), "Missing Func")
+		return nil, Invalid(pctx.GetStart(), "missing func")
 	}
 
 	recType, err := c.FuncType(funcTypeNode)
@@ -27,46 +27,46 @@ func (c *Context) FuncDef(pctx parser.IFuncDefContext) (*ast.FuncDef, error) {
 		}
 	}
 
-	fType := &types.Func{
+	funcType := &types.Func{
 		ParamsList: utils.Map(funcParams, func(param *ast.FuncParam) types.Type {
 			return param.Type
 		}),
 		Return: recType,
 	}
 
-	id := pctx.Identifier().GetText()
+	ident := pctx.Identifier().GetText()
 
-	if !c.DeclSymbol(id, fType) {
-		return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
+	if !c.DeclSymbol(ident, funcType) {
+		return nil, Invalid(pctx.Identifier().GetSymbol(), "duplicate identifier")
 	}
 
 	c.PushSymbolTable()
 	for _, param := range funcParams {
 		if !c.DeclSymbol(param.Identifier, param.Type) {
-			return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
+			return nil, Invalid(pctx.Identifier().GetSymbol(), "duplicate identifier")
 		}
 	}
 
-	fblock, err := c.Block(pctx.Block())
+	block, err := c.Block(pctx.Block())
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.FuncDef{
-		Identifier: id,
+		Identifier: ident,
 		Params:     funcParams,
 		Return:     recType,
-		Body:       fblock,
+		Body:       block,
 	}, nil
 }
 
-func (c *Context) VarDef(pctx parser.IVarDefContext, BaseType types.Type) (*ast.Define, error) {
-	id := pctx.Identifier().GetText()
+func (c *Context) VarDef(pctx parser.IVarDefContext, baseType types.Type) (*ast.Define, error) {
+	ident := pctx.Identifier().GetText()
 
 	dims := pctx.AllConstExp()
 
-	var Type types.Type
-	allLen := 1
+	var varType types.Type
+	size := 1
 
 	mustInt := func(exp parser.IConstExpContext) (int, error) {
 		node, err := c.ConstExp(exp)
@@ -74,81 +74,81 @@ func (c *Context) VarDef(pctx parser.IVarDefContext, BaseType types.Type) (*ast.
 			return 0, err
 		}
 
-		l, ok := node.Value.(int)
+		i, ok := node.Value.(int)
 		if !ok {
 			return 0, Invalid(pctx.GetStart(), "Invalid Array Length")
 		}
-		return l, nil
+		return i, nil
 	}
 
 	if len(dims) == 0 {
-		Type = BaseType
+		varType = baseType
 	} else if len(dims) == 1 {
 		l, err := mustInt(dims[0])
 		if err != nil {
 			return nil, err
 		}
-		allLen *= l
-		Type = &types.Array{
-			ElementType: BaseType,
+		size *= l
+		varType = &types.Array{
+			ElementType: baseType,
 			Shape:       nil,
 		}
 	} else {
-		shape := make([]int, len(dims)-1)
+		arrShape := make([]int, len(dims)-1)
 		for i := 0; i < len(dims)-1; i++ {
 			l, err := mustInt(dims[i])
 			if err != nil {
 				return nil, err
 			}
-			shape[i] = l
-			allLen *= l
+			arrShape[i] = l
+			size *= l
 		}
 
-		shape = shape[1:]
+		arrShape = arrShape[1:]
 
-		Type = &types.Array{
-			ElementType: BaseType,
-			Shape:       shape,
+		varType = &types.Array{
+			ElementType: baseType,
+			Shape:       arrShape,
 		}
 	}
 
-	if !c.DeclSymbol(id, Type) {
-		return nil, Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
+	if !c.DeclSymbol(ident, varType) {
+		return nil, Invalid(pctx.Identifier().GetSymbol(), "duplicate identifier")
 	}
 
-	initExps, err := c.InitVal(pctx.InitVal())
+	initExprs, err := c.InitVal(pctx.InitVal())
 	if err != nil {
 		return nil, err
 	}
 
-	if allLen < len(initExps) {
+	if size < len(initExprs) {
 		return nil, Invalid(pctx.InitVal().GetStart(), "too many init val")
 	}
 
-	if len(initExps) == 1 {
-		if !initExps[0].GetType().Equal(Type) {
-			return nil, Invalid(pctx.InitVal().GetStart(), "Invalid InitVal Type")
+	if len(initExprs) == 1 {
+		if !initExprs[0].GetType().Equal(varType) {
+			return nil, Invalid(pctx.InitVal().GetStart(), "invalid initVal type")
 		}
 		return &ast.Define{
-			Identifier:   id,
-			Type:         Type,
-			InitialValue: initExps[0],
+			Identifier:   ident,
+			Type:         varType,
+			InitialValue: initExprs[0],
 		}, nil
 	}
 
-	initExpNode := &ast.ArrayExp{
-		Type:   BaseType,
-		Member: make([]ast.Expr, allLen),
+	initMemory := &ast.ArrayExp{
+		Type:   baseType,
+		Member: make([]ast.Expr, size),
 	}
 
-	for i := 0; i < allLen; i++ {
-		if i < len(initExps) {
-			initExpNode.Member[i] = initExps[i]
-			if !initExpNode.Member[i].GetType().Assign(BaseType) {
+	for i := 0; i < size; i++ {
+		if i < len(initExprs) {
+			initMemory.Member[i] = initExprs[i]
+			if !initMemory.Member[i].GetType().Assign(baseType) {
 				return nil, Invalid(pctx.InitVal().GetStart(), "Invalid InitVal Type")
 			}
 		} else {
-			initExpNode.Member[i], err = ast.BaseTypeDefault(BaseType)
+			initMemory.Member[i], err = ast.BaseTypeDefault(baseType)
 			if err != nil {
 				return nil, Invalid(pctx.InitVal().GetStart(), err.Error())
 			}
@@ -156,77 +156,110 @@ func (c *Context) VarDef(pctx parser.IVarDefContext, BaseType types.Type) (*ast.
 	}
 
 	return &ast.Define{
-		Identifier:   id,
-		Type:         BaseType,
-		InitialValue: initExpNode,
+		Identifier:   ident,
+		Type:         baseType,
+		InitialValue: initMemory,
 	}, nil
 }
 
-func (c *Context) ConstDef(pctx parser.IConstDefContext, BaseType types.Type) (def *ast.Define, err error) {
-	defer func() {
-		if err != nil {
-			return
-		}
-		if !c.DeclSymbol(def.Identifier, def.Type) {
-			def = nil
-			err = Invalid(pctx.Identifier().GetSymbol(), "Duplicate Identifier")
-		}
-	}()
-
+func (c *Context) ConstDef(pctx parser.IConstDefContext, baseType types.Type) (def *ast.Define, err error) {
 	ident := pctx.Identifier().GetText()
-	vals, err := c.ConstInitVal(pctx.ConstinitVal())
+
+	dims := pctx.AllConstExp()
+
+	var varType types.Type
+	size := 1
+
+	mustInt := func(exp parser.IConstExpContext) (int, error) {
+		node, err := c.ConstExp(exp)
+		if err != nil {
+			return 0, err
+		}
+
+		i, ok := node.Value.(int)
+		if !ok {
+			return 0, Invalid(pctx.GetStart(), "Invalid Array Length")
+		}
+		return i, nil
+	}
+
+	if len(dims) == 0 {
+		varType = baseType
+	} else if len(dims) == 1 {
+		l, err := mustInt(dims[0])
+		if err != nil {
+			return nil, err
+		}
+		size *= l
+		varType = &types.Array{
+			ElementType: baseType,
+			Shape:       nil,
+		}
+	} else {
+		arrShape := make([]int, len(dims)-1)
+		for i := 0; i < len(dims)-1; i++ {
+			l, err := mustInt(dims[i])
+			if err != nil {
+				return nil, err
+			}
+			arrShape[i] = l
+			size *= l
+		}
+
+		arrShape = arrShape[1:]
+
+		varType = &types.Array{
+			ElementType: baseType,
+			Shape:       arrShape,
+		}
+	}
+
+	if !c.DeclSymbol(ident, varType) {
+		return nil, Invalid(pctx.Identifier().GetSymbol(), "duplicate identifier")
+	}
+
+	initExprs, err := c.ConstInitVal(pctx.ConstinitVal())
 	if err != nil {
 		return nil, err
 	}
 
-	dims := pctx.AllConstExp()
-	if len(dims) == 0 {
-		if len(vals) == 0 {
-			def, err := ast.BaseTypeDefault(BaseType)
-			if err != nil {
-				return nil, Invalid(pctx.GetStart(), err.Error())
+	if size < len(initExprs) {
+		return nil, Invalid(pctx.ConstinitVal().GetStart(), "too many init val")
+	}
+
+	if len(initExprs) == 1 {
+		if !initExprs[0].GetType().Equal(varType) {
+			return nil, Invalid(pctx.ConstinitVal().GetStart(), "invalid initVal type")
+		}
+		return &ast.Define{
+			Identifier:   ident,
+			Type:         varType,
+			InitialValue: initExprs[0],
+		}, nil
+	}
+
+	initMemory := &ast.ArrayExp{
+		Type:   baseType,
+		Member: make([]ast.Expr, size),
+	}
+
+	for i := 0; i < size; i++ {
+		if i < len(initExprs) {
+			initMemory.Member[i] = initExprs[i]
+			if !initMemory.Member[i].GetType().Assign(baseType) {
+				return nil, Invalid(pctx.ConstinitVal().GetStart(), "Invalid InitVal Type")
 			}
-			return &ast.Define{
-				Type:         BaseType,
-				Identifier:   ident,
-				InitialValue: def,
-			}, nil
-		} else if len(vals) == 1 {
-			return &ast.Define{
-				Type:         BaseType,
-				Identifier:   ident,
-				InitialValue: vals[0],
-			}, nil
 		} else {
-			return nil, Invalid(pctx.ConstinitVal().GetStart(), "init val not match definition")
+			initMemory.Member[i], err = ast.BaseTypeDefault(baseType)
+			if err != nil {
+				return nil, Invalid(pctx.ConstinitVal().GetStart(), err.Error())
+			}
 		}
-	}
-
-	Type := &types.Array{
-		ElementType: BaseType,
-		Shape:       nil,
-	}
-
-	for _, constExp := range pctx.AllConstExp() {
-		exp, err := c.ConstExp(constExp)
-		if err != nil {
-			return nil, err
-		}
-
-		length, ok := exp.Value.(int)
-		if !ok {
-			return nil, Invalid(constExp.GetStart(), "Invalid array index type")
-		}
-
-		Type.Shape = append(Type.Shape, length)
 	}
 
 	return &ast.Define{
-		Identifier: ident,
-		Type:       Type,
-		InitialValue: &ast.ArrayExp{
-			Type:   BaseType,
-			Member: vals,
-		},
+		Identifier:   ident,
+		Type:         baseType,
+		InitialValue: initMemory,
 	}, nil
 }

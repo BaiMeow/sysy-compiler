@@ -6,107 +6,107 @@ import (
 )
 
 func (c *Context) Cond(pctx parser.ICondContext) (ast.Expr, error) {
-	lOrExp := pctx.LOrExp()
-	if lOrExp == nil {
-		return nil, Invalid(pctx.GetStart(), "Invalid Cond")
+	lOrExpNode := pctx.LOrExp()
+	if lOrExpNode == nil {
+		return nil, Invalid(pctx.GetStart(), "invalid cond")
 	}
-	return c.lOrExp(lOrExp)
+	return c.lOrExp(lOrExpNode)
 }
 
 func (c *Context) lOrExp(pctx parser.ILOrExpContext) (ast.Expr, error) {
-	lAndExp := pctx.LAndExp()
-	if lAndExp == nil {
-		return nil, Invalid(pctx.GetStart(), "Invalid LOrExp")
+	lAndExpNode := pctx.LAndExp()
+	if lAndExpNode == nil {
+		return nil, Invalid(pctx.GetStart(), "invalid lOrExp")
 	}
 
-	lexpr, err := c.lAndExp(lAndExp)
+	lExpr, err := c.lAndExp(lAndExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	lorexp := pctx.LOrExp()
-	if lorexp == nil {
-		return lexpr, nil
+	lOrExpNode := pctx.LOrExp()
+	if lOrExpNode == nil {
+		return lExpr, nil
 	}
 
-	expr, err := c.lOrExp(lorexp)
+	rExpr, err := c.lOrExp(lOrExpNode)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.LOrExp{
-		Left:  lexpr,
-		Right: expr,
+		Left:  lExpr,
+		Right: rExpr,
 	}, nil
 }
 
 func (c *Context) lAndExp(pctx parser.ILAndExpContext) (ast.Expr, error) {
-	eqExp := pctx.EqExp()
-	if eqExp == nil {
+	eqExpNode := pctx.EqExp()
+	if eqExpNode == nil {
 		return nil, Invalid(pctx.GetStart(), "Invalid LAndExp")
 	}
-	left, err := c.EqExp(eqExp)
+	lExpr, err := c.EqExp(eqExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	landexp := pctx.LAndExp()
-	if landexp == nil {
-		return left, nil
+	lAndNode := pctx.LAndExp()
+	if lAndNode == nil {
+		return lExpr, nil
 	}
-	right, err := c.lAndExp(landexp)
+	rExpr, err := c.lAndExp(lAndNode)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.LAndExp{
-		Left:  left,
-		Right: right,
+		Left:  lExpr,
+		Right: rExpr,
 	}, nil
 }
 
 func (c *Context) EqExp(pctx parser.IEqExpContext) (ast.Expr, error) {
-	relExp := pctx.RelExp()
-	if relExp == nil {
+	relExpNode := pctx.RelExp()
+	if relExpNode == nil {
 		return nil, Invalid(pctx.GetStart(), "Invalid EqExp")
 	}
-	relNode, err := c.RelExp(relExp)
+	relExpr, err := c.RelExp(relExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	eqexp := pctx.EqExp()
-	if eqexp == nil {
-		return relNode, nil
+	eqExpNode := pctx.EqExp()
+	if eqExpNode == nil {
+		return relExpr, nil
 	}
 
-	expr, err := c.EqExp(eqexp)
+	eqExpr, err := c.EqExp(eqExpNode)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.EqExp{
-		Left:  relNode,
-		Right: expr,
+		Left:  relExpr,
+		Right: eqExpr,
 	}, nil
 }
 
 func (c *Context) RelExp(pctx parser.IRelExpContext) (ast.Expr, error) {
-	addExp := pctx.AddExp()
-	if addExp == nil {
+	addExpNode := pctx.AddExp()
+	if addExpNode == nil {
 		return nil, Invalid(pctx.GetStart(), "Invalid RelExp")
 	}
-	addNode, err := c.AddExp(addExp)
+	addExpr, err := c.AddExp(addExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	relexp := pctx.RelExp()
-	if relexp == nil {
-		return addNode, nil
+	relExpNode := pctx.RelExp()
+	if relExpNode == nil {
+		return addExpr, nil
 	}
 
-	expr, err := c.RelExp(relexp)
+	relExpr, err := c.RelExp(relExpNode)
 	if err != nil {
 		return nil, err
 	}
@@ -114,23 +114,23 @@ func (c *Context) RelExp(pctx parser.IRelExpContext) (ast.Expr, error) {
 	switch {
 	case pctx.Less() != nil:
 		return &ast.LessExp{
-			Left:  addNode,
-			Right: expr,
+			Left:  addExpr,
+			Right: relExpr,
 		}, nil
 	case pctx.Greater() != nil:
 		return &ast.GreaterExp{
-			Left:  addNode,
-			Right: expr,
+			Left:  addExpr,
+			Right: relExpr,
 		}, nil
 	case pctx.LessEqual() != nil:
 		return &ast.LessEqExp{
-			Left:  addNode,
-			Right: expr,
+			Left:  addExpr,
+			Right: relExpr,
 		}, nil
 	case pctx.GreaterEqual() != nil:
 		return &ast.GreaterEqExp{
-			Left:  addNode,
-			Right: expr,
+			Left:  addExpr,
+			Right: relExpr,
 		}, nil
 	default:
 		return nil, Invalid(pctx.GetStart(), "Invalid RelExp")

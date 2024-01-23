@@ -9,132 +9,131 @@ import (
 	"sysy/parser"
 )
 
-func (c *Context) Exp(pc parser.IExpContext) (ast.Expr, error) {
-	add := pc.AddExp()
-	if add == nil {
-		return nil, Invalid(pc.GetStart(), "Missing AddExp")
+func (c *Context) Exp(pctx parser.IExpContext) (ast.Expr, error) {
+	addExpNode := pctx.AddExp()
+	if addExpNode == nil {
+		return nil, Invalid(pctx.GetStart(), "missing addExp")
 	}
-	return c.AddExp(add)
+	return c.AddExp(addExpNode)
 }
 
-func (c *Context) ConstExp(pc parser.IConstExpContext) (*ast.ConstExpression, error) {
-	add := pc.AddExp()
-	if add == nil {
-		return nil, Invalid(pc.GetStart(), "Missing AddExp")
+func (c *Context) ConstExp(pctx parser.IConstExpContext) (*ast.ConstExpression, error) {
+	addExpNode := pctx.AddExp()
+	if addExpNode == nil {
+		return nil, Invalid(pctx.GetStart(), "missing addExp")
 	}
 
-	rec, err := c.AddExp(add)
+	addExpr, err := c.AddExp(addExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	Value := ast.CalConst(rec)
-	if Value == nil {
-		return nil, Invalid(pc.GetStart(), "Not a const")
+	value := ast.CalConst(addExpr)
+	if value == nil {
+		return nil, Invalid(pctx.GetStart(), "not const")
 	}
 
 	return &ast.ConstExpression{
-		Expr:  rec,
-		Value: Value,
+		Expr:  addExpr,
+		Value: value,
 	}, nil
 }
 
 func (c *Context) AddExp(pc parser.IAddExpContext) (ast.Expr, error) {
-	mul := pc.MulExp()
-	if mul == nil {
-		return nil, Invalid(pc.GetStart(), "Missing MulExp")
+	mulExpNode := pc.MulExp()
+	if mulExpNode == nil {
+		return nil, Invalid(pc.GetStart(), "missing mulExp")
 	}
 
-	mulNode, err := c.MulExp(mul)
+	lExpr, err := c.MulExp(mulExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	addExp := pc.AddExp()
+	addExpNode := pc.AddExp()
 
-	if addExp == nil {
-		return mulNode, nil
+	if addExpNode == nil {
+		return lExpr, nil
 	}
 
-	addNode, err := c.AddExp(addExp)
+	rExpr, err := c.AddExp(addExpNode)
 	if err != nil {
 		return nil, err
 	}
 
 	switch {
 	case pc.Add() != nil:
-
-		addNode, err := ast.NewAdd(mulNode, addNode)
+		addExpr, err := ast.NewAdd(lExpr, rExpr)
 		if err != nil {
-			return nil, Invalid(pc.Add().GetSymbol(), "Invalid AddExp: "+err.Error())
+			return nil, Invalid(pc.Add().GetSymbol(), "invalid addExp: "+err.Error())
 		}
-		return addNode, nil
+		return addExpr, nil
 	case pc.Sub() != nil:
-		subNode, err := ast.NewSub(mulNode, addNode)
+		subExpr, err := ast.NewSub(lExpr, rExpr)
 		if err != nil {
-			return nil, Invalid(pc.Sub().GetSymbol(), "Invalid AddExp: "+err.Error())
+			return nil, Invalid(pc.Sub().GetSymbol(), "invalid subExp: "+err.Error())
 		}
-		return subNode, nil
+		return subExpr, nil
 	default:
-		return nil, Invalid(pc.MulExp().GetStop(), "Missing operator")
+		return nil, Invalid(pc.MulExp().GetStop(), "missing operator")
 	}
 }
 
-func (c *Context) MulExp(pc parser.IMulExpContext) (ast.Expr, error) {
-	unary := pc.UnaryExp()
-	if unary == nil {
-		return nil, Invalid(pc.GetStart(), "Missing UnaryExp")
+func (c *Context) MulExp(pctx parser.IMulExpContext) (ast.Expr, error) {
+	unaryExpNode := pctx.UnaryExp()
+	if unaryExpNode == nil {
+		return nil, Invalid(pctx.GetStart(), "missing unaryExp")
 	}
 
-	unaryExp, err := c.UnaryExp(unary)
+	lExpr, err := c.UnaryExp(unaryExpNode)
 	if err != nil {
 		return nil, err
 	}
 
-	mulExp := pc.MulExp()
+	mulExpNode := pctx.MulExp()
 
-	if mulExp == nil {
-		return unaryExp, nil
+	if mulExpNode == nil {
+		return lExpr, nil
 	}
 
-	mulNode, err := c.MulExp(mulExp)
+	rExpr, err := c.MulExp(mulExpNode)
 	if err != nil {
 		return nil, err
 	}
 
 	switch {
-	case pc.Mul() != nil:
-		mulNode, err := ast.NewMul(unaryExp, mulNode)
+	case pctx.Mul() != nil:
+		mulExpr, err := ast.NewMul(lExpr, rExpr)
 		if err != nil {
-			return nil, Invalid(pc.Mul().GetSymbol(), "Invalid AddExp: "+err.Error())
+			return nil, Invalid(pctx.Mul().GetSymbol(), "invalid addExp: "+err.Error())
 		}
-		return mulNode, nil
-	case pc.Div() != nil:
-		divNode, err := ast.NewDiv(unaryExp, mulNode)
+		return mulExpr, nil
+	case pctx.Div() != nil:
+		divExpr, err := ast.NewDiv(lExpr, rExpr)
 		if err != nil {
-			return nil, Invalid(pc.Div().GetSymbol(), "Invalid AddExp: "+err.Error())
+			return nil, Invalid(pctx.Div().GetSymbol(), "invalid divExp: "+err.Error())
 		}
-		return divNode, nil
-	case pc.Mod() != nil:
-		modNode, err := ast.NewMod(unaryExp, mulNode)
+		return divExpr, nil
+	case pctx.Mod() != nil:
+		modExpr, err := ast.NewMod(lExpr, rExpr)
 		if err != nil {
-			return nil, Invalid(pc.Mod().GetSymbol(), "Invalid AddExp: "+err.Error())
+			return nil, Invalid(pctx.Mod().GetSymbol(), "invalid modExp: "+err.Error())
 		}
-		return modNode, nil
+		return modExpr, nil
 	default:
-		return nil, Invalid(pc.UnaryExp().GetStop(), "Missing operator")
+		return nil, Invalid(pctx.UnaryExp().GetStop(), "missing operator")
 	}
 }
 
 func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expr, error) {
-	primary := pctx.PrimaryExp()
-	if primary != nil {
-		return c.Primary(primary)
+	primaryExpNode := pctx.PrimaryExp()
+	if primaryExpNode != nil {
+		return c.Primary(primaryExpNode)
 	}
 
 	// func call
-	if funcRParams := pctx.FuncRParams(); funcRParams != nil {
-		expList, err := c.FuncRParams(funcRParams)
+	if funcRParamsNode := pctx.FuncRParams(); funcRParamsNode != nil {
+		paramList, err := c.FuncRParams(funcRParamsNode)
 		if err != nil {
 			return nil, err
 		}
@@ -142,33 +141,33 @@ func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expr, error) {
 		ident := pctx.Identifier().GetText()
 		symbolType := c.GetSymbol(ident)
 		if symbolType == nil {
-			return nil, Invalid(pctx.Identifier().GetSymbol(), "Undeclared Identifier")
+			return nil, Invalid(pctx.Identifier().GetSymbol(), "undeclared identifier")
 		}
 
-		fType, ok := symbolType.(*types.Func)
+		funcType, ok := symbolType.(*types.Func)
 		if !ok {
-			return nil, Invalid(pctx.Identifier().GetSymbol(), "Not a function")
+			return nil, Invalid(pctx.Identifier().GetSymbol(), "not a function")
 		}
 
-		if len(expList) != len(fType.ParamsList) {
-			return nil, Invalid(pctx.Identifier().GetSymbol(), "Wrong number of parameters")
+		if len(paramList) != len(funcType.ParamsList) {
+			return nil, Invalid(pctx.Identifier().GetSymbol(), "wrong number of parameters")
 		}
 
-		for i, v := range fType.ParamsList {
-			if !v.Assign(expList[i].GetType()) {
-				return nil, Invalid(pctx.Identifier().GetSymbol(), fmt.Sprintf("%s cannot be assigned to %s", expList[i].GetType().String(), v.String()))
+		for i, v := range funcType.ParamsList {
+			if !v.Assign(paramList[i].GetType()) {
+				return nil, Invalid(pctx.Identifier().GetSymbol(), fmt.Sprintf("%s cannot be assigned to %s", paramList[i].GetType().String(), v.String()))
 			}
 		}
 
 		return &ast.FuncCall{
 			Identifier: ident,
-			ParamsR:    expList,
-			Type:       fType.Return,
+			ParamsR:    paramList,
+			Type:       funcType.Return,
 		}, nil
 	}
 
 	if unaryNode := pctx.UnaryExp(); unaryNode != nil {
-		unary, err := c.UnaryExp(unaryNode)
+		unaryExpr, err := c.UnaryExp(unaryNode)
 		if err != nil {
 			return nil, err
 		}
@@ -176,114 +175,114 @@ func (c *Context) UnaryExp(pctx parser.IUnaryExpContext) (ast.Expr, error) {
 		op := pctx.UnaryOp()
 		switch {
 		case op.Add() != nil:
-			return ast.NewPlus(unary)
+			return ast.NewPlus(unaryExpr)
 		case op.Sub() != nil:
-			return ast.NewNeg(unary)
+			return ast.NewNeg(unaryExpr)
 		case op.Not() != nil:
-			return ast.NewNot(unary)
+			return ast.NewNot(unaryExpr)
 		default:
-			return nil, Invalid(pctx.UnaryExp().GetStop(), "Missing operator")
+			return nil, Invalid(pctx.UnaryExp().GetStop(), "missing operator")
 		}
 	}
 
-	return nil, Invalid(pctx.GetStart(), "Invalid UnaryExp")
+	return nil, Invalid(pctx.GetStart(), "invalid unaryExp")
 }
 
 func (c *Context) FuncRParams(pctx parser.IFuncRParamsContext) ([]ast.Expr, error) {
 	var exprs []ast.Expr
-	for _, v := range pctx.AllExp() {
-		exp, err := c.Exp(v)
+	for _, expNode := range pctx.AllExp() {
+		expr, err := c.Exp(expNode)
 		if err != nil {
 			return nil, err
 		}
-		exprs = append(exprs, exp)
+		exprs = append(exprs, expr)
 	}
 	return exprs, nil
 }
 
 func (c *Context) Primary(pctx parser.IPrimaryExpContext) (ast.Expr, error) {
-	if exp := pctx.Exp(); exp != nil {
-		return c.Exp(exp)
+	if expNode := pctx.Exp(); expNode != nil {
+		return c.Exp(expNode)
 	}
 
-	if lval := pctx.LVal(); lval != nil {
-		return c.Lval(lval)
+	if lValNode := pctx.LVal(); lValNode != nil {
+		return c.LVal(lValNode)
 	}
 
-	if number := pctx.Number(); number != nil {
-		return c.Number(number)
+	if numberNode := pctx.Number(); numberNode != nil {
+		return c.Number(numberNode)
 	}
 
-	return nil, Invalid(pctx.GetStart(), "Invalid PrimaryExp")
+	return nil, Invalid(pctx.GetStart(), "invalid primaryExp")
 }
 
-func (c *Context) Lval(pctx parser.ILValContext) (ast.Expr, error) {
-	id := pctx.Identifier().GetText()
-	symbolType := c.GetSymbol(id)
+func (c *Context) LVal(pctx parser.ILValContext) (ast.Expr, error) {
+	ident := pctx.Identifier().GetText()
+	symbolType := c.GetSymbol(ident)
 	if symbolType == nil {
-		return nil, Invalid(pctx.Identifier().GetSymbol(), "Undeclared Identifier")
+		return nil, Invalid(pctx.Identifier().GetSymbol(), "undeclared identifier")
 	}
 
-	var node ast.Expr = &ast.Symbol{
+	var lValExpr ast.Expr = &ast.Symbol{
 		Type:       symbolType,
-		Identifier: id,
+		Identifier: ident,
 	}
 
-	exps := pctx.AllExp()
-	if len(exps) == 0 {
+	expNodes := pctx.AllExp()
+	if len(expNodes) == 0 {
 		// todo: check lval
-		return node, nil
+		return lValExpr, nil
 	}
 
-	for _, exp := range exps {
-		expNode, err := c.Exp(exp)
+	for _, expNode := range expNodes {
+		expr, err := c.Exp(expNode)
 		if err != nil {
-			return nil, Invalid(exp.GetStart(), "Cannot be member")
+			return nil, Invalid(expNode.GetStart(), "cannot be member")
 		}
-		node, err = ast.NewMember(node, expNode)
+		lValExpr, err = ast.NewMember(lValExpr, expr)
 		if err != nil {
-			return nil, Invalid(exp.GetStart(), "Cannot be member "+err.Error())
+			return nil, Invalid(expNode.GetStart(), "cannot be member "+err.Error())
 		}
 	}
 
-	return node, nil
+	return lValExpr, nil
 }
 
 func (c *Context) Number(pctx parser.INumberContext) (ast.Expr, error) {
-	strval := pctx.GetText()
-	if strings.Contains(strval, ".") {
-		f64, err := strconv.ParseFloat(strval, 32)
+	literal := pctx.GetText()
+	if strings.Contains(literal, ".") {
+		f64, err := strconv.ParseFloat(literal, 32)
 		if err != nil {
-			return nil, Invalid(pctx.GetStart(), "Invalid FloatConst: "+err.Error())
+			return nil, Invalid(pctx.GetStart(), "invalid floatConst: "+err.Error())
 		}
 		return &ast.FloatConst{
 			Value: float32(f64),
 		}, nil
 	}
 
-	if (strings.HasPrefix(strval, "0x") || strings.HasPrefix(strval, "0X")) && len(strval) > 2 {
-		i64, err := strconv.ParseInt(strval[2:], 16, 32)
+	if (strings.HasPrefix(literal, "0x") || strings.HasPrefix(literal, "0X")) && len(literal) > 2 {
+		i64, err := strconv.ParseInt(literal[2:], 16, 32)
 		if err != nil {
-			return nil, Invalid(pctx.GetStart(), "Invalid IntegerConst: "+err.Error())
+			return nil, Invalid(pctx.GetStart(), "invalid integerConst: "+err.Error())
 		}
 		return &ast.IntegerConst{
 			Value: int(i64),
 		}, nil
 	}
 
-	if strings.HasPrefix(strval, "0") && len(strval) > 1 {
-		i64, err := strconv.ParseInt(strval[1:], 8, 32)
+	if strings.HasPrefix(literal, "0") && len(literal) > 1 {
+		i64, err := strconv.ParseInt(literal[1:], 8, 32)
 		if err != nil {
-			return nil, Invalid(pctx.GetStart(), "Invalid IntegerConst: "+err.Error())
+			return nil, Invalid(pctx.GetStart(), "invalid integerConst: "+err.Error())
 		}
 		return &ast.IntegerConst{
 			Value: int(i64),
 		}, nil
 	}
 
-	i64, err := strconv.ParseInt(strval, 10, 32)
+	i64, err := strconv.ParseInt(literal, 10, 32)
 	if err != nil {
-		return nil, Invalid(pctx.GetStart(), "Invalid IntegerConst: "+err.Error())
+		return nil, Invalid(pctx.GetStart(), "invalid integerConst: "+err.Error())
 	}
 	return &ast.IntegerConst{
 		Value: int(i64),

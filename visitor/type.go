@@ -14,7 +14,7 @@ func (c *Context) FuncType(pctx parser.IFuncTypeContext) (types.Type, error) {
 	if Void := pctx.Void(); Void != nil {
 		return &types.Base{Type: types.Void}, nil
 	}
-	return nil, Invalid(pctx.GetStart(), "Invalid Func")
+	return nil, Invalid(pctx.GetStart(), "invalid func")
 }
 
 func (c *Context) Type(pctx antlr.TerminalNode) (types.Type, error) {
@@ -24,49 +24,49 @@ func (c *Context) Type(pctx antlr.TerminalNode) (types.Type, error) {
 	case "float":
 		return &types.Base{Type: types.Float}, nil
 	default:
-		return nil, Invalid(pctx.GetSymbol(), "Invalid Type")
+		return nil, Invalid(pctx.GetSymbol(), "invalid type")
 	}
 }
 
 func (c *Context) FuncFParams(pctx parser.IFuncFParamsContext) ([]*ast.FuncParam, error) {
-	params := pctx.AllFuncFParam()
-	var astParams []*ast.FuncParam
-	for _, param := range params {
+	paramNodes := pctx.AllFuncFParam()
+	var params []*ast.FuncParam
+	for _, param := range paramNodes {
 		astParam, err := c.FuncFParam(param)
 		if err != nil {
 			return nil, err
 		}
-		astParams = append(astParams, astParam)
+		params = append(params, astParam)
 	}
-	return astParams, nil
+	return params, nil
 }
 
 func (c *Context) FuncFParam(pctx parser.IFuncFParamContext) (*ast.FuncParam, error) {
-	BaseType, err := c.Type(pctx.Type())
+	baseType, err := c.Type(pctx.Type())
 	if err != nil {
 		return nil, err
 	}
 
 	ident := pctx.Identifier().GetText()
 
-	constExps := pctx.AllConstExp()
-	if len(constExps) == 0 {
+	constExpNodes := pctx.AllConstExp()
+	if len(constExpNodes) == 0 {
 		return &ast.FuncParam{
 			Identifier: ident,
-			Type:       BaseType,
+			Type:       baseType,
 		}, nil
 	}
 
 	var dims []int
-	for _, exp := range constExps {
-		dim, err := c.ConstExp(exp)
+	for _, constExpNode := range constExpNodes {
+		dim, err := c.ConstExp(constExpNode)
 		if err != nil {
 			return nil, err
 		}
 
 		dimIndex, ok := dim.Value.(int)
 		if !ok {
-			return nil, Invalid(exp.GetStart(), "Invalid array index type")
+			return nil, Invalid(constExpNode.GetStart(), "invalid array index type")
 		}
 		dims = append(dims, dimIndex)
 	}
@@ -74,7 +74,7 @@ func (c *Context) FuncFParam(pctx parser.IFuncFParamContext) (*ast.FuncParam, er
 	return &ast.FuncParam{
 		Identifier: ident,
 		Type: &types.Array{
-			ElementType: BaseType,
+			ElementType: baseType,
 			Shape:       dims,
 		},
 	}, nil
